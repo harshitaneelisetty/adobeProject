@@ -143,7 +143,7 @@ def parseAddress(text, cust_phone):
     return cust_add1, cust_add2, descrip, city
 
 
-def parseInvDescription(text, city, descrip):
+def parseInvDescription(text, city, descrip, prefix):
     inv_description = re.sub(r'.*DETAILS | PAYMENT.*', '', text.replace('|', ''))
     if descrip != '':
         inv_description = descrip
@@ -168,6 +168,8 @@ def parseInvDescription(text, city, descrip):
         inv_description = inv_description[:idx - 7]
     if '@' in inv_description:
         inv_description = ''
+    if prefix != '':
+        inv_description = prefix + inv_description
     return inv_description
 
 
@@ -197,24 +199,28 @@ def extractData(data, pdfno):
 
     y = 1
     print(text)
-    for _ in range(15):
+    for _ in range(12):
         email = parseEmail(text)
         cust_name = parseName(text, email)
         cust_phone = parsePhone(text)
         cust_add1, cust_add2, descrip, city = parseAddress(text, cust_phone)
+        prefix = ''
+        if len(cust_add2.split(" ")) > 4:
+            text2 = text.split('|')
+            prefix = cust_add2
+            cust_add2 = text2[21]
         city = cust_add2
         if 'Subtotal' in count[y]:
             break
         bill_name = count[y]
         bill_qty = count[y + 1]
         bill_rate = count[y + 2]
-        inv_description = parseInvDescription(text, city, descrip)
+        inv_description = parseInvDescription(text, city, descrip, prefix)
         inv_due_date = parseDueDate(text)
         inv_issue_date = parseIssueDate(text)
         inv_number = parseInvNum(text)
         file = pdfno
         y += 4
-
         saveData(email, cust_name, cust_phone, cust_add1, cust_add2, bill_name, bill_qty, bill_rate, inv_description, inv_due_date,inv_issue_date, inv_number, file)
 
 
@@ -240,6 +246,7 @@ def saveData(email, cust_name, cust_phone, cust_add1, cust_add2, bill_name, bill
     dat['Invoice__Number'] =inv_number
     dat['Invoice__Tax'] = 10
     dat['Pdf__No'] = file
+   # print(text[4])
 
     master_list.append(dat)
     df = pandas.DataFrame(master_list)
